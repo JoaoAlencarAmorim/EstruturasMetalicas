@@ -1,0 +1,88 @@
+#Importação das bibliotecas
+from matplotlib import pyplot as plt
+#import pandas as pd
+import math as m
+
+#Importando a tabela de perfis
+#plan = pd.read_excel("perfisMET.xlsx")
+
+#Constante de Stefan-boltzmann [W/m2°C4]
+sigma = 5.67*10**(-8)
+#Emissividade resultante
+epsilon = 0.7
+#Coeficiente de condutividade térmica [W/m2°C]
+alphaC = 25
+#Calor específico do aço [J/kgºC]
+Ca = 600
+#Densidade do aço - Pág. 13 NBR8800:2008 [kg/m³]
+Pa = 7850
+#Variação de tempo [s]
+Dt = 1
+#Tempo inicial
+tempo = 0
+#Tempo final
+parada = 120 * 60
+#Temperatura ambiente [ºC]
+tetaAmbiente = float(input("Temperatura ambiente: "))
+
+#perfil = int(input("Perfil: "))
+#Número de Faces horizontais expostas
+numFaceH = int(input("Quantas faces HORIZONTAIS estão expostas? "))
+#Número de Faces verticais expostas
+numFaceV = int(input("Quantas faces VERTICAIS estão expostas? "))
+
+TRRFmin = float(input("TRRF? "))
+TRRF = TRRFmin * 60
+
+#Propriedades geométricas da seção do perfil
+Ag = float(input("Ag [cm²]: "))/ 10000 #plan[5][perfil] / 10000
+d = float(input("d [mm]: "))/ 1000 #plan[6][perfil] / 1000
+tw = float(input("tw [mm]: "))/ 1000 #plan[7][perfil] / 1000
+bf = float(input("bf [mm]: "))/ 1000 #plan[10][perfil] / 1000
+raio = float(input("Raio da ligação mesa/alma [mm]: "))/1000 #plan[28][perfil] / 1000
+
+#Temperatura aço [ºC]
+tetaA = []
+tetaA.append(tetaAmbiente)
+#Temperatura do gás [ºC]
+tetaG = []
+
+if Ag%(bf*d) == 0:
+    #Fator de massividade
+    fMass = (bf*2 + 2*d)/Ag
+    #Fator de massividade de caixa hipotética
+    fMassB = (bf*numFaceH + d*numFaceV)/Ag
+    Ksh = 1
+else:
+    # Fator de massividade
+    fMass = (bf * 4 - 2 * (tw + 2*raio) + 2 * d) / Ag
+    # Fator de massividade de caixa hipotética
+    fMassB = (bf * numFaceH + d * numFaceV) / Ag
+    # Fator de redução devido ao sombreamento
+    Ksh = 0.9*(fMassB)/(fMass)
+
+print(Ksh)
+
+i = 0
+while tempo < parada:
+    #Temperatura do gás
+    tetaG.append(345*m.log(8*tempo/60+1) + tetaAmbiente)
+    #Fluxo de calor por unidade de área pela radiação
+    hr = sigma*epsilon*((tetaG[i] + 273)**4-(tetaA[i] + 273)**4)
+    #Fluxo de calor por unidade de área pela convecção dos gases quentes
+    hc = alphaC*(tetaG[i] - tetaA[i])
+    # Fluxo de calor por unidade de área total
+    h = hr + hc
+    #Variação de temperatura do aço nesse intervalo de tempo
+    DtetaA = Ksh*h*Dt*fMass/(Ca*Pa)
+    #Temperatura do aço
+    tetaA.append(tetaA[i] + DtetaA)
+    #Tempo decorrido
+    tempo += Dt
+    i+=1
+
+tetaG.append(345*m.log(8*tempo/60+1) + tetaAmbiente)
+eixoX = range(parada + 1)
+plt.plot(eixoX, tetaG)
+plt.plot(eixoX, tetaA)
+plt.show()
